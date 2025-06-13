@@ -10,13 +10,10 @@ from database import get_db, PDFMetadata
 from sqlalchemy.orm import Session
 import uuid
 
-# Load environment variables
 load_dotenv()
 
-# Create FastAPI app
 app = FastAPI(title="PDF Q&A API", version="1.0.0")
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,11 +22,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Directory setup
 UPLOAD_DIR = "uploads"
 VECTOR_DIR = "vector_data"
 
-# Create directories if they don't exist
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(VECTOR_DIR, exist_ok=True)
 
@@ -42,7 +37,6 @@ async def root():
 async def upload_pdf(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """Upload and process PDF file"""
     try:
-        # Generate session ID for this upload
         session_id = str(uuid.uuid4())
         
         file_path = os.path.join(UPLOAD_DIR, file.filename)
@@ -54,7 +48,6 @@ async def upload_pdf(file: UploadFile = File(...), db: Session = Depends(get_db)
         doc_vector_path = os.path.join(VECTOR_DIR, file.filename)
         store_document(text, doc_vector_path)
         
-        # Store metadata in database
         pdf_metadata = PDFMetadata(
             filename=file.filename,
             file_path=file_path,
@@ -108,13 +101,11 @@ async def ask_question(filename: str = Form(...), question: str = Form(...)):
 async def delete_file(filename: str, db: Session = Depends(get_db)):
     """Delete a PDF file and its associated data"""
     try:
-        # Delete from database
         pdf_metadata = db.query(PDFMetadata).filter(PDFMetadata.filename == filename).first()
         if pdf_metadata:
             db.delete(pdf_metadata)
             db.commit()
         
-        # Delete physical files
         file_path = os.path.join(UPLOAD_DIR, filename)
         vector_path = os.path.join(VECTOR_DIR, filename)
         
@@ -137,17 +128,14 @@ async def delete_file(filename: str, db: Session = Depends(get_db)):
 async def delete_session(session_id: str, db: Session = Depends(get_db)):
     """Delete all files associated with a session"""
     try:
-        # Get all files for this session
         session_files = db.query(PDFMetadata).filter(PDFMetadata.session_id == session_id).all()
         
         for pdf_metadata in session_files:
-            # Delete physical files
             if os.path.exists(pdf_metadata.file_path):
                 os.remove(pdf_metadata.file_path)
             if os.path.exists(pdf_metadata.vector_store_path):
                 shutil.rmtree(pdf_metadata.vector_store_path)
             
-            # Delete from database
             db.delete(pdf_metadata)
         
         db.commit()
