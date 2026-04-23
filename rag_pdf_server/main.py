@@ -10,7 +10,8 @@ from database import get_db, PDFMetadata
 from sqlalchemy.orm import Session
 import uuid
 
-load_dotenv()
+# Load .env from the current script's directory
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 app = FastAPI(title="PDF Q&A API", version="1.0.0")
 
